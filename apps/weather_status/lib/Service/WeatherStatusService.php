@@ -189,7 +189,7 @@ class WeatherStatusService {
 		$lat = $this->config->getUserValue($this->userId, 'weather_status', 'lat', '');
 		$lon = $this->config->getUserValue($this->userId, 'weather_status', 'lon', '');
 		$address = $this->config->getUserValue($this->userId, 'weather_status', 'address', '');
-		$mode = $this->config->getUserValue($this->userId, 'weather_status', 'mode', self::MODE_BROWSER_LOCATION);
+		$mode = $this->config->getUserValue($this->userId, 'weather_status', 'mode', self::MODE_MANUAL_LOCATION);
 		return [
 			'lat' => $lat,
 			'lon' => $lon,
