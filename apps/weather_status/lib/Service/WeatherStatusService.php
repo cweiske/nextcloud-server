@@ -28,6 +28,7 @@ namespace OCA\WeatherStatus\Service;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IConfig;
 use OCP\IL10N;
+use OCP\App\IAppManager;
 use OCP\Accounts\IAccountManager;
 use OCP\Accounts\PropertyDoesNotExistException;
 use OCP\IUserManager;
@@ -54,6 +55,7 @@ class WeatherStatusService {
 								IL10N $l10n,
 								IAccountManager $accountManager,
 								IUserManager $userManager,
+								IAppManager $appManager,
 								string $userId) {
 		$this->timeFactory = $timeFactory;
 		$this->config = $config;
@@ -61,6 +63,8 @@ class WeatherStatusService {
 		$this->l10n = $l10n;
 		$this->accountManager = $accountManager;
 		$this->userManager = $userManager;
+		$this->appManager = $appManager;
+		$this->version = $appManager->getAppVersion('weather_status');
 		$this->clientService = $clientService;
 		$this->client = $clientService->newClient();
 	}
@@ -221,7 +225,7 @@ class WeatherStatusService {
 		try {
 			$options = [
 				'headers' => [
-					'User-Agent' => 'Nextcloud weather status'
+					'User-Agent' => 'NextcloudWeatherStatus/' . $this->version . ' nextcloud.com'
 				],
 			];
 
