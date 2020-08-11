@@ -33,6 +33,7 @@ use OCP\Accounts\IAccountManager;
 use OCP\Accounts\PropertyDoesNotExistException;
 use OCP\IUserManager;
 use OCP\Http\Client\IClientService;
+use OCP\ICacheFactory;
 
 /**
  * Class StatusService
@@ -56,6 +57,7 @@ class WeatherStatusService {
 								IAccountManager $accountManager,
 								IUserManager $userManager,
 								IAppManager $appManager,
+								ICacheFactory $cacheFactory,
 								string $userId) {
 		$this->timeFactory = $timeFactory;
 		$this->config = $config;
@@ -67,6 +69,9 @@ class WeatherStatusService {
 		$this->version = $appManager->getAppVersion('weather_status');
 		$this->clientService = $clientService;
 		$this->client = $clientService->newClient();
+		if ($cacheFactory->isAvailable()) {
+			$this->cache = $cacheFactory->createDistributed();
+		}
 	}
 
 	public function setMode(int $mode): array {
@@ -108,8 +113,8 @@ class WeatherStatusService {
 
 	private function resolveLocation($lat, $lon) {
 		$params = [
-			'lat' => $lat,
-			'lon' => $lon,
+			'lat' => number_format($lat, 3),
+			'lon' => number_format($lon, 3),
 			'addressdetails' => 1,
 			'format' => 'json',
 		];
@@ -210,8 +215,8 @@ class WeatherStatusService {
 
 	private function forecastRequest(float $lat, float $lon, int $nbValues = 10): array {
 		$params = [
-			'lat' => $lat,
-			'lon' => $lon,
+			'lat' => number_format($lat, 3),
+			'lon' => number_format($lon, 3),
 		];
 		$url = 'https://api.met.no/weatherapi/locationforecast/2.0/compact';
 		$weather = $this->requestJSON($url, $params);
@@ -222,6 +227,12 @@ class WeatherStatusService {
 	}
 
 	private function requestJSON($url, $params = []) {
+		if (isset($this->cache)) {
+			$cacheKey = $url . '|' . implode(',', $params) . '|' . implode(',', array_keys($params));
+			if ($this->cache->hasKey($cacheKey)) {
+				return $this->cache->get($cacheKey);
+			}
+		}
 		try {
 			$options = [
 				'headers' => [
@@ -229,19 +240,31 @@ class WeatherStatusService {
 				],
 			];
 
+			$reqUrl = $url;
 			if (count($params) > 0) {
 				$paramsContent = http_build_query($params);
-				$url .= '?' . $paramsContent;
+				$reqUrl = $url . '?' . $paramsContent;
 			}
 
-			$response = $this->client->get($url, $options);
+			$response = $this->client->get($reqUrl, $options);
 			$body = $response->getBody();
+			$headers = $response->getHeaders();
+			//if (isset($headers['Expires']) and count($headers['Expires']) > 0) {
+			//	error_log('EXXXX '.$headers['Expires'].'||||');
+			//	error_log(implode(' !!! ', $headers['Expires']).'|||||');
+			//	error_log((new \Datetime($headers['Expires'][0]))->getTimestamp().'||oo||');
+			//	$expireTs = (new \Datetime($headers['Expires'][0]))->getTimestamp();
+			//}
 			$respCode = $response->getStatusCode();
 
 			if ($respCode >= 400) {
 				return ['error' => $this->l10n->t('Error')];
 			} else {
-				return json_decode($body, true);
+				$json = json_decode($body, true);
+				if (isset($this->cache)) {
+					$this->cache->set($cacheKey, $json, 60 * 60);
+				}
+				return $json;
 			}
 		} catch (\Exception $e) {
 			$this->logger->warning($url . 'API error : ' . $e, ['app' => $this->appName]);
