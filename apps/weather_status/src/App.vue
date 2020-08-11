@@ -31,7 +31,7 @@
 					target="_blank"
 					:href="weatherLinkTarget"
 					:close-after-click="true">
-					{{ address }}
+					{{ locationText }}
 				</ActionLink>
 				<ActionSeparator v-if="address" />
 				<ActionButton
@@ -123,6 +123,9 @@ export default {
 				heavyrainshowers_day: this.$t('weather_status', 'Heavy rain showers'),
 				heavyrainshowers_night: this.$t('weather_status', 'Heavy rain showers'),
 			}
+		},
+		locationText() {
+			return this.$t('weather_status', 'More weather for {adr}', { adr: this.address })
 		},
 		sixHoursTempForecast() {
 			return this.forecasts.length > 5 ? this.forecasts[5].data.instant.details.air_temperature : ''
